@@ -9,6 +9,7 @@ component (Propagation = blocks) FC_membrane_vone
 % heat is dissipated to the connected thermal mass.
 % Added parameter Platinum loading 
 % Copyright 2020-2021 The MathWorks, Inc.
+% Edited by Lasse Bialik Øien for master thesis.
 
 nodes
     % Electrodes
@@ -70,7 +71,7 @@ parameters
     rho_membrane = {2000,  'kg/m^3'}; % Density of dry membrane
     M_membrane   = {1.1,   'kg/mol'}; % Equivalent weight of dry membrane
     N2_coef      = {0.2,    "1"    }; % Nitrogen permability coefficent
-    ohmic_scaling  = {1  ,    "Ohm*cm^2"    }; % Scaling the ohmic overpotenital
+    ohmic_scaling  = {0.01  ,    "Ohm*cm^2"    }; % Scaling the ohmic overpotenital
 
 end
 
@@ -101,22 +102,10 @@ parameters (Access = protected)
     LHV_H2 = HHV_H2 - MW_H2O * hfg_H2O_std; % Lower heating value of hydrogen
     T_std  = {25,               'degC'   }; % Standard temperature
     p_std  = {1,                'atm'    }; % Standard pressure
-    delta_G_C = {66,            "kJ/mol"} ; % activation eneregy cathode
-    delta_G_A = {29,            "kJ/mol"} ; % activation eneregy anode
-    i_o_ref_A = {1e-4 ,          "A/cm^2"}; % anode refrence current density
-    i_o_ref_C = {1e-9 ,          "A/cm^2"}; % cathode refrence current density
-    alpha_A =   {0.7,             "1"    }; % anode charge transfer coeficent
-    alpha_C =   {1.7,             "1"    }; % cathode charge transfer coeficent
-    Y_M     =   {110,               "1"    }; % electrode surface roughnes
 
 
     % Standard cell potential
     E_cell_0 = G_H2O/(-2*F);
-
-    %water density vector
-    %rho_H2O = {[1.109 , 1.060, 1.029, 0.9996 , 0.9721],"kg/m^3"}; water density vector
-    %T_vector = {[ 323.15 , 333.15 ,343.15,353.15,363.15],"K"} ; %temperature vector for water density 
-    
     
 
     % Membrane permeability to water
@@ -141,14 +130,14 @@ end
 variables (ExternalAccess = observe)
     i = {0, 'A' }; % Current (positive in)
     Q = {0, 'kW'}; % Heat flow rate (positive in)
-    %test_temp = {1,"K"};
+   
 
     a_H2O_acl = {0.5, '1'}; % Water vapor activity at anode catalyst layer (ACL)
     a_H2O_ccl = {0.5, '1'}; % Water vapor activity at cathode catalyst layer (CCL)
 
     y_N2_A = {0.0, "1"}; % moles of nitrogen at anode
-    y_N2_C = {0.0,"1"}; %moles of nitrogen at cathode 
-    v = E_cell_0*N_cell;
+    y_N2_C = {0.0,"1"}; % moles of nitrogen at cathode 
+    v = E_cell_0*N_cell; % Stack voltage
 
 end
 
@@ -165,8 +154,8 @@ intermediates
     v_cell = (v_nernst - v_act - v_ohm - v_conc); % Cell voltage
     R_ohm = t_membrane / sigma; % Membrane resistance
 
-    lambda_content = lambda_membrane/16; %water content of membrane
-    lambda_mem = lambda_membrane; %for logging
+    lambda_content = lambda_membrane/16; % water content of membrane
+    lambda_mem = lambda_membrane; % for logging
 
     power_elec = N_cell * v_cell * i_cell * area_cell; % Electrical power produced
     power_dissipated = power_net - power_elec; % Power dissipated
@@ -177,19 +166,19 @@ intermediates
     O2_consumed  = N_cell * MW_O2  * area_cell * i_cell/(4*F); % Oxygen consumed
     H2O_produced = N_cell * MW_H2O * area_cell * i_cell/(2*F); % Water produced
 
-    diff_coef = D_lambda
+    diff_coef = D_lambda; % for logging
 
-    N2_A_p = p_N2_A
-    N2_C_p = p_N2_C
-    N2_transport = N2_flux * area_cell * N_cell * MW_N2;
+    N2_A_p = p_N2_A; % for logging  
+    N2_C_p = p_N2_C; % for logging
+    N2_transport = N2_flux * area_cell * N_cell * MW_N2; % Nitrogen transport
 
     H2O_transport = (nflux_H2O_diff + nflux_H2O_drag + nflux_H2O_hydraulic) ...
         * MW_H2O * area_cell * N_cell; % Net water transport from anode to cathode
 
-    A_N2_massfraction = x_N2_A;
-    test_n2 = K_N2;
-    mole_w_anode = y_H2O_acl;
-    mole_w_cathode = y_H2O_ccl;
+    A_N2_massfraction = x_N2_A; % mass fraction N2 anode
+    test_n2 = K_N2; % Permability of nitrogen
+    mole_w_anode = y_H2O_acl; % Mole of nitrogen at anode
+    mole_w_cathode = y_H2O_ccl; % Mole of Nitrogen at cathode
     
 end
 
@@ -313,7 +302,7 @@ intermediates (ExternalAccess = none)
     f_v = (lambda_membrane * V_w)/(V_mem + lambda_membrane * V_w);
 
     E_cell_temp = { value(T_stack,"K")* (-0.9e-3) -  value(T_std,"K")* (-0.9e-3),"V"};
-    E_cell = E_cell_0 + E_cell_temp;
+    E_cell = E_cell_0 + E_cell_temp; % Reversible cell potential
     % Nernst voltage
     v_nernst = E_cell + R_u*T_stack/(2*F) * log((a_H2_A * a_O2_C^0.5) / a_H2O_C);
 
@@ -322,7 +311,7 @@ intermediates (ExternalAccess = none)
     b = R_u * T_stack / (2 * alpha * F);
     v_act = if ge(i_cell, io), b*log(i_cell/io) else 0 end;
      
-    %d_v_act = if ge(i_cell, io), b*1/i_cell else 0 end;
+  
  
 
     % Gas transport voltage loss
@@ -338,15 +327,13 @@ intermediates (ExternalAccess = none)
     lambda_ccl = membrane_water(a_H2O_ccl);
     lambda_membrane = (lambda_acl + lambda_ccl)/2;
 
-    % Thicknes expansion in membrane assumed linear
-    membrane_t_ = t_membrane + lambda_content * 0.1 * t_membrane
 
     % Membrane conductivity
     sigma_30 = {if ge(lambda_membrane, 1), 0.005139*lambda_membrane - 0.00326 else 0.005139 - 0.00326 end, '1/(Ohm*cm)'};
     sigma = sigma_30 * exp(1268*(1/303.15 - 1/value(T_stack, 'K')));
 
     % Resistive voltage loss
-    %companstaded in typical ohmic region
+    % companstaded in typical ohmic region
     v_ohm = (R_ohm + ohmic_scaling ) * i_cell;
 
 
@@ -369,6 +356,7 @@ intermediates (ExternalAccess = none)
     D_H2O_membrane = exp(2416*(1/303.15 - 1/value(T_stack, 'K'))) * D_lambda;
 
     % Water concentrations at anode and cathode catalyst layers
+    % From Dutta et al. This is the surface of the membrane at each side.
     Conc_H2O_acl = rho_membrane / M_membrane * lambda_acl;
     Conc_H2O_ccl = rho_membrane / M_membrane * lambda_ccl;
 
@@ -391,6 +379,7 @@ intermediates (ExternalAccess = none)
     y_H2O_ccl = a_H2O_ccl/p_ws_ratio_C;
 
     % Molar flux of water across anode and cathode diffusion layers
+    % Asuming infently thin catalysts, this is the flux through the catalyst and thus the surface of the membrane
     nflux_H2O_A =  p_A*D_H2O_gdl_A/(R_u*T_stack) * (y_H2O_Ao - y_H2O_acl)/t_gdl_A;
     nflux_H2O_C =  p_C*D_H2O_gdl_C/(R_u*T_stack) * (y_H2O_ccl - y_H2O_Co)/t_gdl_C;
 
@@ -407,7 +396,7 @@ intermediates (ExternalAccess = none)
 
     %Nitrogen crossover coefficent.
 
-    K_N2 = N2_coef * (0.0295 + 1.21*f_v + 0.023*f_v^2) * exp((24000/8.31446261815324)*(1/303.15 - 1/value(T_stack, 'K'))) * {1e-11, "mol/(Pa * m*s)"};
+    K_N2 = N2_coef * (0.0295 + 1.21*f_v + 0.023*f_v^2) * exp((24000/8.31446261815324)*(1/303.15 - 1/value(T_stack, 'K'))) * {1e-14, "mol/(Pa * m*s)"};
     N2_flux =K_N2 * (p_N2_A - p_N2_C)/t_membrane;
 
     % Energy generation due to reaction at standard temperature
@@ -432,7 +421,7 @@ equations
     
     v == p.v - n.v; % Voltage
     v == N_cell * v_cell;
-    %test_temp == {T_stack,"K"};
+   
 
     % Heat generated
     -Q == (N_cell*LHV_H2/(2*F) - v)*i_cell*area_cell;
@@ -462,7 +451,7 @@ equations
 
     % Assign mass flow rate to the internal moisture source and trace gas source blocks
     % to model mass consumption/generation due to reaction
-    source_H2_A.M  == -H2_consumed + N2_transport;
+    source_H2_A.M  == -H2_consumed + N2_transport; % remove extra hydrogen to compensate for nitrogen crossover
     source_O2_C.M  == -O2_consumed;
     source_H2O_C.M == H2O_produced;
     source_H2_A.T  == T_stack;
@@ -484,9 +473,6 @@ components (ExternalAccess = none)
     source_H2O_C = foundation.moist_air.sources.moisture_trace_gas.controlled_moisture_source( ...
         moisture_source_spec = foundation.enum.moisture_source_spec.vapor);
 
-    %Nitrogen source 
-    %source_N2_A = foundation.moist_air.elements.controlled_reservoir;
-   % transport_N2_A = foundation.moist_air.sources.controlled_mass_flow_rate_source;
 end
 
 connections
